@@ -14,6 +14,12 @@ Verify Ask Ubuntu Snap Launches
     ${result}    Run Keyword And Return Status    Snap List    ask-ubuntu
     Should Be True    ${result}    ask-ubuntu snap should be installed
 
+Verify Lemonade Server Installed
+    [Documentation]    Verify lemonade-server snap was installed as dependency
+    [Tags]    smoke
+    ${result}    Run Keyword And Return Status    Snap List    lemonade-server
+    Should Be True    ${result}    lemonade-server snap should be installed
+
 Open Ask Ubuntu Application
     [Documentation]    Launch the ask-ubuntu application
     [Tags]    functional
@@ -44,6 +50,7 @@ Verify Help Menu Exists
 Verify Snap Is Installed
     ${list}    Run    snap list
     Should Contain    ${list.stdout}    ask-ubuntu
+    Should Contain    ${list.stdout}    lemonade-server
 
 Uninstall Snap
     Run    snap remove ask-ubuntu    warn
