@@ -93,6 +93,24 @@ jobs:
           set -e
           echo "yarf_exit=${YARF_EXIT}" >> "$GITHUB_OUTPUT"
 
+      - name: Extract screenshots from YARF log
+        run: |
+          python3 - <<'EOF'
+          import re, base64, os, sys
+          snap = "${{ inputs.snap_name }}"
+          html_file = f"results/{snap}/log.html"
+          if not os.path.exists(html_file):
+              print("No log.html found, skipping")
+              sys.exit(0)
+          content = open(html_file, "rb").read().decode("utf-8", errors="replace")
+          matches = re.findall(r'data:image/png;base64,([A-Za-z0-9+/=]+)', content)
+          for i, m in enumerate(matches):
+              path = f"results/{snap}/screenshot-{i+1:03d}.png"
+              open(path, "wb").write(base64.b64decode(m))
+              print(f"Extracted {path}")
+          print(f"Total: {len(matches)} screenshot(s)")
+          EOF
+
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         with:
