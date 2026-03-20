@@ -79,10 +79,13 @@ jobs:
             --include "^$XDG_RUNTIME_DIR/wayland-99\$" \
             "$XDG_RUNTIME_DIR"
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
-          # Mir auto-starts Xwayland on first X11 client; trigger it now so
-          # the display is ready before the snap under test launches.
-          timeout 10 bash -c 'until DISPLAY=:0 xdpyinfo >/dev/null 2>&1; do sleep 0.5; done' || true
-          echo "DISPLAY=:0" >> "$GITHUB_ENV"
+          # Start Xwayland as a Wayland client on the Mir compositor.
+          # This sidesteps Mir's internal Xwayland management (which can't find
+          # the host binary from inside the mir-test-tools snap confinement).
+          WAYLAND_DISPLAY=wayland-99 Xwayland :1 -rootless &
+          # Wait for the X11 socket to appear
+          timeout 10 bash -c 'until [ -S /tmp/.X11-unix/X1 ]; do sleep 0.2; done'
+          echo "DISPLAY=:1" >> "$GITHUB_ENV"
 
       - name: Start snap under test
         run: |
