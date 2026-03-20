@@ -1,0 +1,6 @@
+snap: lemonade
+version: v10.0.0-37-gb989f4d1d3
+channel: edge
+revision: 83
+status: passed
+gh_run: 23328582002
