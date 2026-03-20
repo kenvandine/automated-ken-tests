@@ -1,0 +1,6 @@
+snap: terminal-fun
+version: 0+git.bfd6f40
+channel: candidate
+revision: 8
+status: passed
+gh_run: 23342933349
