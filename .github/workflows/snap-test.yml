@@ -84,11 +84,11 @@ jobs:
         env:
           ELECTRON_OZONE_PLATFORM_HINT: wayland
         run: |
-          dbus-run-session -- snap run "${{ inputs.snap_name }}" \
+          snap run "${{ inputs.snap_name }}" \
             --ozone-platform=wayland \
-            --disable-gpu \
+            --use-angle=swiftshader \
             --no-sandbox &
-          sleep 5
+          sleep 8
 
       - name: Run YARF tests
         id: yarf
