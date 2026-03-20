@@ -61,7 +61,7 @@ jobs:
 
       - name: Install snaps
         run: |
-          sudo apt-get install -y inotify-tools xwayland
+          sudo apt-get install -y inotify-tools xwayland libegl1
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
