@@ -61,22 +61,31 @@ jobs:
 
       - name: Install snaps
         run: |
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y inotify-tools
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
           sudo snap connect yarf:process-control
-          sudo snap connect yarf:x11
+
+      - name: Start Mir compositor
+        run: |
+          mir-test-tools.demo-server \
+            --add-wayland-extensions zwlr_screencopy_manager_v1:zwlr_virtual_pointer_manager_v1 \
+            --platform-display-libs mir:virtual \
+            --virtual-output 1280x1024 \
+            --wayland-socket-name wayland-99 &
+          inotifywait --event create \
+            --include "^$XDG_RUNTIME_DIR/wayland-99\$" \
+            "$XDG_RUNTIME_DIR"
+          echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
 
       - name: Run YARF tests
         id: yarf
         continue-on-error: true
         run: |
           mkdir -p "results/${{ inputs.snap_name }}"
-          Xvfb :99 -screen 0 1920x1080x24 &
-          sleep 1
           set +e
-          DISPLAY=:99 yarf \
+          yarf \
             --platform Mir \
             --outdir "results/${{ inputs.snap_name }}" \
             "suites/${{ inputs.snap_name }}/suite"
