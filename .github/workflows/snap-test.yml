@@ -66,6 +66,7 @@ jobs:
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
           sudo snap connect yarf:process-control
+          sudo snap connect yarf:x11
 
       - name: Run YARF tests
         id: yarf
@@ -74,11 +75,14 @@ jobs:
           mkdir -p "results/${{ inputs.snap_name }}"
           Xvfb :99 -screen 0 1920x1080x24 &
           sleep 1
+          set +e
           DISPLAY=:99 yarf \
             --platform Mir \
             --outdir "results/${{ inputs.snap_name }}" \
             "suites/${{ inputs.snap_name }}/suite"
-          echo "yarf_exit=$?" >> "$GITHUB_OUTPUT"
+          YARF_EXIT=$?
+          set -e
+          echo "yarf_exit=${YARF_EXIT}" >> "$GITHUB_OUTPUT"
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
