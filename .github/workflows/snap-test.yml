@@ -90,13 +90,17 @@ jobs:
 
       - name: Start snap under test
         run: |
-          # Unset WAYLAND_DISPLAY so Electron/Chromium uses X11 (via Xwayland)
-          # rather than connecting to Mir directly (which causes wl_shm crashes).
-          # Also disable GPU to skip the hardware-GPU retry cycle on virtual display.
-          env -u WAYLAND_DISPLAY snap run "${{ inputs.snap_name }}" -- \
-            --disable-gpu --no-sandbox &
-          # Give the app time to start and render its main window
+          # Run lemonade on Wayland directly (now that zwp_linux_dmabuf_v1 is
+          # dropped from Mir, the previous wl_shm crash should not recur).
+          snap run "${{ inputs.snap_name }}" &
           sleep 15
+
+      - name: Debug display state
+        run: |
+          echo "=== X11 windows on :1 ==="
+          DISPLAY=:1 xwininfo -root -tree 2>&1 || true
+          echo "=== Wayland clients ==="
+          ls -la "$XDG_RUNTIME_DIR"/wayland-* 2>&1 || true
 
       - name: Run YARF tests
         id: yarf
