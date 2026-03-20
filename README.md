@@ -1,55 +1,85 @@
 # automated-ken-tests
 
-Testing repository for YARF snap tests managed by snap-dashboard.
+YARF snap testing repository, managed by [snap-dashboard](https://github.com/kenvandine/automated-ken).
 
-## Setup
+Test results are published as pull requests in this repository. snap-dashboard polls the PRs and displays pass/fail status with screenshots inline.
 
-1. Add this repository as the testing repo in snap-dashboard settings
-2. Add the following GitHub secrets to this repository:
-   - `SNAP_DASHBOARD_GITHUB_TOKEN` - A GitHub token with `repo` scope
-   - (Optional) `SNAPCRAFT_STORE_CREDENTIALS` - For store-authenticated snap installs
+## Repository setup
 
-## Test Suite Structure
+### 1. GitHub Actions secret
 
-Test suites should be organized as:
+Add a repository secret named `SNAP_DASHBOARD_GITHUB_TOKEN` with a Personal Access Token that has **repo** scope. This allows the workflow to push result branches and open PRs.
+
+Optional: add `SNAPCRAFT_STORE_CREDENTIALS` if any snap requires store-authenticated installation.
+
+### 2. Configure snap-dashboard
+
+In snap-dashboard **Settings**, set **Testing Repository** to `kenvandine/automated-ken-tests`.
+
+## Test suite structure
+
+Each snap has its own suite directory:
+
 ```
 suites/<snap_name>/suite/
-├── __init__.robot          # Suite setup/teardown and variables
-└── test_<snapname>.robot   # Test cases (note: filename uses hyphenless name)
+├── __init__.robot          # Suite setup/teardown (variables, display init, etc.)
+└── test_<snapname>.robot   # Test cases
 ```
 
-## Usage
+The GitHub Actions workflow looks for suites at `suites/<snap_name>/suite/` and expects `__init__.robot` to be present.
 
-Trigger tests from snap-dashboard by selecting a snap and channel.
-Test results will be published as PRs in this repository.
+## GitHub Actions workflow
 
-## Example: ask-ubuntu Snap Test
+The workflow at `.github/workflows/snap-test.yml` is triggered by snap-dashboard via `workflow_dispatch`. It:
 
-The `ask-ubuntu` test suite is included as an example:
+1. Installs `xvfb`, `yarf` (beta), `mir-test-tools`, and the snap under test
+2. Starts a virtual X11 display (`Xvfb :99`) for the Mir compositor
+3. Runs YARF with `--platform Mir` against the snap's suite
+4. Uploads test artifacts (results + screenshots)
+5. Commits results to a branch and opens a PR back to `main`
 
-```
-suites/ask-ubuntu/suite/
-├── __init__.robot          # Xvfb setup for headless display
-└── test_askubuntu.robot    # Test cases (no hyphen in filename)
-```
+### Workflow inputs
 
-### Test Coverage
+| Input | Description |
+|-------|-------------|
+| `snap_name` | Snap to test |
+| `from_channel` | Channel to install from (`candidate` or `edge`) |
+| `architecture` | `amd64` or `arm64` |
+| `version` | Expected version string (informational) |
+| `revision` | Expected revision number (informational) |
+| `dashboard_run_id` | snap-dashboard TestRun ID (echoed into PR metadata) |
 
-- **Smoke**: Verify snap is installed
-- **Functional**: Launch app, verify window title
-- **Connectivity**: Check network access to Ask Ubuntu service
-- **UI**: Verify help menu and About dialog
-
-### Running Tests Locally
+## Running tests locally
 
 ```bash
 # Install YARF
-pip install canonical-yarf
+sudo snap install --beta yarf
+sudo snap install mir-test-tools
+sudo snap connect yarf:process-control
+
+# Install the snap under test
+sudo snap install mysnap --channel candidate
 
 # Start virtual display
-Xvfb :99 -screen 0 1280x800x24 &
-export DISPLAY=:99
+sudo apt-get install -y xvfb
+Xvfb :99 -screen 0 1920x1080x24 &
 
 # Run tests
-yarf --platform Mir suites/ask-ubuntu/suite/
+DISPLAY=:99 yarf --platform Mir --outdir results/mysnap suites/mysnap/suite
 ```
+
+## Test result PRs
+
+Each test run creates a branch `test-results/<snap>/<gh_run_id>` and opens a PR titled:
+
+- `✅ mysnap 1.2.3 (candidate) — passed`
+- `❌ mysnap 1.2.3 (candidate) — failed`
+
+The PR body contains a results table, screenshots (if any PNGs were written to `results/<snap>/`), and an HTML comment with machine-readable metadata used by snap-dashboard.
+
+## Existing suites
+
+| Snap | Suite location |
+|------|---------------|
+| `ask-ubuntu` | `suites/ask-ubuntu/suite/` |
+| `lemonade` | `suites/lemonade/suite/` |
