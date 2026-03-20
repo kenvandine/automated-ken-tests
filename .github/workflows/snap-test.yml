@@ -61,7 +61,7 @@ jobs:
 
       - name: Install snaps
         run: |
-          sudo apt-get install -y inotify-tools xwayland libegl1
+          sudo apt-get install -y inotify-tools
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
@@ -80,27 +80,21 @@ jobs:
             --include "^$XDG_RUNTIME_DIR/wayland-99\$" \
             "$XDG_RUNTIME_DIR"
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
-          # Start Xwayland as a Wayland client on the Mir compositor.
-          # This sidesteps Mir's internal Xwayland management (which can't find
-          # the host binary from inside the mir-test-tools snap confinement).
-          WAYLAND_DISPLAY=wayland-99 Xwayland :1 -rootless &
-          # Wait for the X11 socket to appear
-          timeout 10 bash -c 'until [ -S /tmp/.X11-unix/X1 ]; do sleep 0.2; done'
-          echo "DISPLAY=:1" >> "$GITHUB_ENV"
 
       - name: Start snap under test
         run: |
-          # Run lemonade on Wayland directly (now that zwp_linux_dmabuf_v1 is
-          # dropped from Mir, the previous wl_shm crash should not recur).
           snap run "${{ inputs.snap_name }}" &
+          # Wait for the snap process to appear, then give it time to render
+          timeout 30 bash -c \
+            "until pgrep -f '${{ inputs.snap_name }}' > /dev/null; do sleep 1; done"
           sleep 15
 
       - name: Debug display state
         run: |
-          echo "=== X11 windows on :1 ==="
-          DISPLAY=:1 xwininfo -root -tree 2>&1 || true
-          echo "=== Wayland clients ==="
+          echo "=== Wayland compositor socket ==="
           ls -la "$XDG_RUNTIME_DIR"/wayland-* 2>&1 || true
+          echo "=== Running snap processes ==="
+          pgrep -a -f "${{ inputs.snap_name }}" 2>&1 || true
 
       - name: Run YARF tests
         id: yarf
