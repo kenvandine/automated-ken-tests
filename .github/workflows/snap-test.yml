@@ -80,6 +80,11 @@ jobs:
             "$XDG_RUNTIME_DIR"
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
 
+      - name: Start snap under test
+        run: |
+          snap run "${{ inputs.snap_name }}" &
+          sleep 3
+
       - name: Run YARF tests
         id: yarf
         continue-on-error: true
