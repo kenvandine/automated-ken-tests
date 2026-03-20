@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.12.3 on linux)" generated="2026-03-20T02:44:30.771542" rpa="false" schemaversion="5">
+<suite id="s1" name="suite" source="/tmp/tmpmjym_yyu">
+<suite id="s1-s1" name="Test Lemonade" source="/tmp/tmpmjym_yyu/test_lemonade.robot">
+<kw name="Verify Snap Is Installed" type="SETUP">
+<kw name="Run" owner="OperatingSystem">
+<msg time="2026-03-20T02:44:30.827726" level="INFO">Running command 'snap list 2&gt;&amp;1'.</msg>
+<msg time="2026-03-20T02:44:30.829235" level="INFO">${list} = /bin/sh: 1: snap: Permission denied</msg>
+<var>${list}</var>
+<arg>snap list</arg>
+<doc>_This keyword is considered deprecated. Use the
+[http://robotframework.org/robotframework/latest/libraries/Process.html|
+Process] library instead._</doc>
+<status status="PASS" start="2026-03-20T02:44:30.827159" elapsed="0.002122"/>
+</kw>
+<kw name="Should Contain" owner="BuiltIn">
+<msg time="2026-03-20T02:44:30.830021" level="FAIL">Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</msg>
+<arg>${list.stdout}</arg>
+<arg>lemonade</arg>
+<doc>Fails if ``container`` does not contain ``item`` one or more times.</doc>
+<status status="FAIL" start="2026-03-20T02:44:30.829496" elapsed="0.000572">Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</kw>
+<kw name="Should Contain" owner="BuiltIn">
+<arg>${list.stdout}</arg>
+<arg>lemonade-server</arg>
+<doc>Fails if ``container`` does not contain ``item`` one or more times.</doc>
+<status status="NOT RUN" start="2026-03-20T02:44:30.830466" elapsed="0.000044"/>
+</kw>
+<status status="FAIL" start="2026-03-20T02:44:30.826657" elapsed="0.003971">Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</kw>
+<test id="s1-s1-t1" name="Verify Lemonade Snap Launches" line="11">
+<doc>Ensure the lemonade snap launches successfully</doc>
+<tag>smoke</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.830710" elapsed="0.000403">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<test id="s1-s1-t2" name="Verify Lemonade Server Installed" line="17">
+<doc>Verify lemonade-server snap was installed as dependency</doc>
+<tag>smoke</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.831383" elapsed="0.000474">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<test id="s1-s1-t3" name="Open Lemonade Application" line="23">
+<doc>Launch the lemonade application</doc>
+<tag>functional</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.832070" elapsed="0.000259">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<test id="s1-s1-t4" name="Verify Application Title" line="30">
+<doc>Check that the application window has the correct title</doc>
+<tag>functional</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.832547" elapsed="0.000290">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<test id="s1-s1-t5" name="Check Network Connectivity" line="36">
+<doc>Verify the app can reach the Lemonade service</doc>
+<tag>connectivity</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.833025" elapsed="0.000269">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<test id="s1-s1-t6" name="Verify Menu Exists" line="42">
+<doc>Check that the application has a menu</doc>
+<tag>ui</tag>
+<status status="FAIL" start="2026-03-20T02:44:30.833509" elapsed="0.000270">Parent suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'</status>
+</test>
+<kw name="Uninstall Snap" type="TEARDOWN">
+<kw name="Run" owner="OperatingSystem">
+<msg time="2026-03-20T02:44:30.834570" level="FAIL">Keyword 'OperatingSystem.Run' expected 1 argument, got 2.</msg>
+<arg>snap remove lemonade</arg>
+<arg>warn</arg>
+<doc>_This keyword is considered deprecated. Use the
+[http://robotframework.org/robotframework/latest/libraries/Process.html|
+Process] library instead._</doc>
+<status status="FAIL" start="2026-03-20T02:44:30.834446" elapsed="0.000156">Keyword 'OperatingSystem.Run' expected 1 argument, got 2.</status>
+</kw>
+<status status="FAIL" start="2026-03-20T02:44:30.834242" elapsed="0.000490">Keyword 'OperatingSystem.Run' expected 1 argument, got 2.</status>
+</kw>
+<doc>Test cases for lemonade snap</doc>
+<status status="FAIL" start="2026-03-20T02:44:30.806954" elapsed="0.027839">Suite setup failed:
+Resolving variable '${list.stdout}' failed: AttributeError: 'str' object has no attribute 'stdout'
+
+Also suite teardown failed:
+Keyword 'OperatingSystem.Run' expected 1 argument, got 2.</status>
+</suite>
+<doc>YARF test suite for lemonade snap
+
+This suite tests the lemonade snap functionality using the
+Mir platform and Xvfb for headless display simulation.</doc>
+<status status="FAIL" start="2026-03-20T02:44:30.786986" elapsed="0.048419"/>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="6" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="0" fail="1" skip="0">connectivity</stat>
+<stat pass="0" fail="2" skip="0">functional</stat>
+<stat pass="0" fail="2" skip="0">smoke</stat>
+<stat pass="0" fail="1" skip="0">ui</stat>
+</tag>
+<suite>
+<stat name="suite" id="s1" pass="0" fail="6" skip="0">suite</stat>
+<stat name="Test Lemonade" id="s1-s1" pass="0" fail="6" skip="0">suite.Test Lemonade</stat>
+</suite>
+</statistics>
+<errors>
+<msg time="2026-03-20T02:44:30.806377" level="ERROR">Error in file '/tmp/tmpmjym_yyu' on line 7: Replacing variables from setting 'Resource' failed: Variable '${SUITE_SOURCE_DIR}' not found. Did you mean:
+    ${SUITE_SOURCE}</msg>
+</errors>
+</robot>
