@@ -61,7 +61,7 @@ jobs:
 
       - name: Install snaps
         run: |
-          sudo apt-get install -y inotify-tools
+          sudo apt-get install -y inotify-tools xwayland
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
@@ -79,15 +79,14 @@ jobs:
             --include "^$XDG_RUNTIME_DIR/wayland-99\$" \
             "$XDG_RUNTIME_DIR"
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
+          # Mir auto-starts Xwayland on first X11 client; trigger it now so
+          # the display is ready before the snap under test launches.
+          timeout 10 bash -c 'until DISPLAY=:0 xdpyinfo >/dev/null 2>&1; do sleep 0.5; done' || true
+          echo "DISPLAY=:0" >> "$GITHUB_ENV"
 
       - name: Start snap under test
-        env:
-          ELECTRON_OZONE_PLATFORM_HINT: wayland
         run: |
-          snap run "${{ inputs.snap_name }}" \
-            --ozone-platform=wayland \
-            --use-angle=swiftshader \
-            --no-sandbox &
+          snap run "${{ inputs.snap_name }}" &
           sleep 8
 
       - name: Run YARF tests
