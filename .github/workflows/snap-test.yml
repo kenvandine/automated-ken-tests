@@ -90,8 +90,13 @@ jobs:
 
       - name: Start snap under test
         run: |
-          snap run "${{ inputs.snap_name }}" &
-          sleep 8
+          # Unset WAYLAND_DISPLAY so Electron/Chromium uses X11 (via Xwayland)
+          # rather than connecting to Mir directly (which causes wl_shm crashes).
+          # Also disable GPU to skip the hardware-GPU retry cycle on virtual display.
+          env -u WAYLAND_DISPLAY snap run "${{ inputs.snap_name }}" -- \
+            --disable-gpu --no-sandbox &
+          # Give the app time to start and render its main window
+          sleep 15
 
       - name: Run YARF tests
         id: yarf
