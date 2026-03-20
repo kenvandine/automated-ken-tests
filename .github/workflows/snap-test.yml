@@ -102,19 +102,30 @@ jobs:
       - name: Extract screenshots from YARF log
         run: |
           python3 - <<'EOF'
-          import re, base64, os, sys
+          import re, base64, zlib, os, sys
           snap = "${{ inputs.snap_name }}"
           html_file = f"results/{snap}/log.html"
           if not os.path.exists(html_file):
               print("No log.html found, skipping")
               sys.exit(0)
           content = open(html_file, "rb").read().decode("utf-8", errors="replace")
-          matches = re.findall(r'data:image/png;base64,([A-Za-z0-9+/=]+)', content)
-          for i, m in enumerate(matches):
+          # YARF stores log messages as zlib-compressed base64 blobs in its JS output.
+          # Each blob decodes to HTML containing data:image/png;base64,... URIs.
+          # Blobs starting with "eN" are zlib-compressed (magic bytes 0x78 0xDA in base64).
+          blobs = re.findall(r'"(eN[A-Za-z0-9+/=]+)"', content)
+          screenshots = []
+          for blob in blobs:
+              try:
+                  decompressed = zlib.decompress(base64.b64decode(blob)).decode("utf-8", errors="replace")
+                  pngs = re.findall(r'data:image/png;base64,([A-Za-z0-9+/=]+)', decompressed)
+                  screenshots.extend(pngs)
+              except Exception:
+                  pass
+          for i, png_b64 in enumerate(screenshots):
               path = f"results/{snap}/screenshot-{i+1:03d}.png"
-              open(path, "wb").write(base64.b64decode(m))
+              open(path, "wb").write(base64.b64decode(png_b64))
               print(f"Extracted {path}")
-          print(f"Total: {len(matches)} screenshot(s)")
+          print(f"Total: {len(screenshots)} screenshot(s)")
           EOF
 
       - name: Upload test artifacts
