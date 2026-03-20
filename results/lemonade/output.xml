@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.12.3 on linux)" generated="2026-03-20T02:55:45.465469" rpa="false" schemaversion="5">
+<suite id="s1" name="suite" source="/tmp/tmpvwaf69rm">
+<kw name="Start Lemonade" type="SETUP">
+<kw name="Start Process" owner="Process">
+<msg time="2026-03-20T02:55:45.503323" level="INFO">Starting process:
+snap run lemonade</msg>
+<msg time="2026-03-20T02:55:45.505827" level="FAIL">PermissionError: [Errno 13] Permission denied: 'snap'</msg>
+<arg>snap</arg>
+<arg>run</arg>
+<arg>lemonade</arg>
+<arg>alias=lemonade</arg>
+<doc>Starts a new process on background.</doc>
+<status status="FAIL" start="2026-03-20T02:55:45.502976" elapsed="0.003716">PermissionError: [Errno 13] Permission denied: 'snap'</status>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<arg>3s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="NOT RUN" start="2026-03-20T02:55:45.506862" elapsed="0.000052"/>
+</kw>
+<status status="FAIL" start="2026-03-20T02:55:45.502601" elapsed="0.004426">PermissionError: [Errno 13] Permission denied: 'snap'</status>
+</kw>
+<suite id="s1-s1" name="Test Lemonade" source="/tmp/tmpvwaf69rm/test_lemonade.robot">
+<test id="s1-s1-t1" name="Lemonade Launches And Renders" line="7">
+<doc>Verify lemonade snap launches and renders a UI on Mir</doc>
+<tag>smoke</tag>
+<tag>yarf:certification_status: blocker</tag>
+<status status="FAIL" start="2026-03-20T02:55:45.507464" elapsed="0.000342">Parent suite setup failed:
+PermissionError: [Errno 13] Permission denied: 'snap'</status>
+</test>
+<doc>Test cases for lemonade snap</doc>
+<status status="FAIL" start="2026-03-20T02:55:45.507109" elapsed="0.001113">Parent suite setup failed:
+PermissionError: [Errno 13] Permission denied: 'snap'</status>
+</suite>
+<kw name="Stop Lemonade" type="TEARDOWN">
+<kw name="Terminate Process" owner="Process">
+<msg time="2026-03-20T02:55:45.509485" level="FAIL">Non-existing index or alias 'lemonade'.</msg>
+<arg>lemonade</arg>
+<arg>kill=True</arg>
+<doc>Stops the process gracefully or forcefully.</doc>
+<status status="FAIL" start="2026-03-20T02:55:45.509009" elapsed="0.000570">Non-existing index or alias 'lemonade'.</status>
+</kw>
+<status status="FAIL" start="2026-03-20T02:55:45.508837" elapsed="0.000871">Non-existing index or alias 'lemonade'.</status>
+</kw>
+<doc>YARF test suite for lemonade snap</doc>
+<status status="FAIL" start="2026-03-20T02:55:45.466300" elapsed="0.043465">Suite setup failed:
+PermissionError: [Errno 13] Permission denied: 'snap'
+
+Also suite teardown failed:
+Non-existing index or alias 'lemonade'.</status>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="1" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="0" fail="1" skip="0">smoke</stat>
+<stat pass="0" fail="1" skip="0">yarf:certification_status: blocker</stat>
+</tag>
+<suite>
+<stat name="suite" id="s1" pass="0" fail="1" skip="0">suite</stat>
+<stat name="Test Lemonade" id="s1-s1" pass="0" fail="1" skip="0">suite.Test Lemonade</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>
