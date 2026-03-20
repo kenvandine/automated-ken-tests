@@ -81,9 +81,11 @@ jobs:
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
 
       - name: Start snap under test
+        env:
+          ELECTRON_OZONE_PLATFORM_HINT: wayland
         run: |
-          snap run "${{ inputs.snap_name }}" &
-          sleep 3
+          snap run "${{ inputs.snap_name }}" --ozone-platform=wayland &
+          sleep 5
 
       - name: Run YARF tests
         id: yarf
