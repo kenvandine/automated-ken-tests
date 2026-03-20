@@ -113,7 +113,8 @@ jobs:
       - name: Extract screenshots from YARF log
         run: |
           python3 - <<'EOF'
-          import re, base64, zlib, os, sys
+          import re, base64, zlib, os, sys, io
+          from PIL import Image
           snap = "${{ inputs.snap_name }}"
           html_file = f"results/{snap}/log.html"
           if not os.path.exists(html_file):
@@ -134,7 +135,12 @@ jobs:
                   pass
           for i, png_b64 in enumerate(screenshots):
               path = f"results/{snap}/screenshot-{i+1:03d}.png"
-              open(path, "wb").write(base64.b64decode(png_b64))
+              img = Image.open(io.BytesIO(base64.b64decode(png_b64)))
+              # Crop out the black Mir desktop background, keeping only the app window
+              bbox = img.convert("RGB").getbbox()
+              if bbox:
+                  img = img.crop(bbox)
+              img.save(path)
               print(f"Extracted {path}")
           print(f"Total: {len(screenshots)} screenshot(s)")
           EOF
