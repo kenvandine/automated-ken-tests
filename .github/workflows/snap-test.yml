@@ -58,12 +58,13 @@ jobs:
 
       - name: Install snaps
         run: |
-          sudo apt-get install -y inotify-tools python3-pil
+          sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
           sudo snap connect yarf:process-control
           sudo snap connect "${{ inputs.snap_name }}":wayland || true
+          sudo snap connect "${{ inputs.snap_name }}":opengl || true
 
           # Capture actual installed version and revision
           SNAP_LIST=$(snap list "${{ inputs.snap_name }}" --unicode=never | tail -1)
@@ -84,10 +85,12 @@ jobs:
             --include "^$XDG_RUNTIME_DIR/wayland-99\$" \
             "$XDG_RUNTIME_DIR"
           echo "WAYLAND_DISPLAY=wayland-99" >> "$GITHUB_ENV"
+          echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
+          echo "GALLIUM_DRIVER=llvmpipe" >> "$GITHUB_ENV"
 
       - name: Start snap under test
         run: |
-          snap run "${{ inputs.snap_name }}" &
+          snap run "${{ inputs.snap_name }}" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
             "until pgrep -f '${{ inputs.snap_name }}' > /dev/null; do sleep 1; done"
@@ -99,6 +102,10 @@ jobs:
           ls -la "$XDG_RUNTIME_DIR"/wayland-* 2>&1 || true
           echo "=== Running snap processes ==="
           pgrep -a -f "${{ inputs.snap_name }}" 2>&1 || true
+          echo "=== Snap stdout ==="
+          cat /tmp/snap-stdout.log 2>/dev/null || true
+          echo "=== Snap stderr ==="
+          cat /tmp/snap-stderr.log 2>/dev/null || true
 
       - name: Run YARF tests
         id: yarf
@@ -174,6 +181,11 @@ jobs:
           dashboard_run_id: ${{ inputs.dashboard_run_id }}
           yarf_exit_code: ${{ steps.yarf.outputs.yarf_exit }}
           EOF
+
+      - name: Collect snap logs
+        run: |
+          cp /tmp/snap-stdout.log "results/${{ inputs.snap_name }}/snap-stdout.log" 2>/dev/null || true
+          cp /tmp/snap-stderr.log "results/${{ inputs.snap_name }}/snap-stderr.log" 2>/dev/null || true
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
