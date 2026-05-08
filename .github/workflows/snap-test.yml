@@ -77,6 +77,19 @@ jobs:
           echo "ACTUAL_VERSION=${ACTUAL_VERSION}" >> "$GITHUB_ENV"
           echo "ACTUAL_REVISION=${ACTUAL_REVISION}" >> "$GITHUB_ENV"
 
+      - name: Inspect snap launcher
+        env:
+          SNAP_NAME: ${{ inputs.snap_name }}
+        run: |
+          echo "=== meta/snap.yaml ==="
+          cat "/snap/$SNAP_NAME/current/meta/snap.yaml" || true
+          echo "=== command-chain scripts ==="
+          for f in "/snap/$SNAP_NAME/current/snap/command-chain/"*.sh; do
+            [ -f "$f" ] || continue
+            echo "--- $f ---"
+            cat "$f"
+          done
+
       - name: Start Mir compositor
         run: |
           export WAYLAND_DISPLAY=wayland-99
@@ -113,7 +126,9 @@ jobs:
             OZONE_PLATFORM=wayland \
             ELECTRON_OZONE_PLATFORM_HINT=wayland \
             XCURSOR_SIZE=24 \
-            snap run "$SNAP_NAME" -- --force-device-scale-factor=1.0 > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
+            GDK_SCALE=1 \
+            GDK_DPI_SCALE=1 \
+            snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
             "until pgrep -f '/snap/${SNAP_NAME}/' > /dev/null; do sleep 1; done"
