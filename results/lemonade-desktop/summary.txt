@@ -1,0 +1,6 @@
+snap: lemonade-desktop
+version: v10.3.0-23-gde77d4cca0
+channel: edge
+revision: 26
+status: passed
+gh_run: 25555525979
