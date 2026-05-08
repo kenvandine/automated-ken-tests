@@ -60,7 +60,7 @@ jobs:
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri
+          sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri dbus-user-session
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "$SNAP_NAME" --channel "${{ inputs.from_channel }}"
@@ -90,13 +90,18 @@ jobs:
           echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
           echo "GALLIUM_DRIVER=llvmpipe" >> "$GITHUB_ENV"
 
-      - name: Start session D-Bus
+      - name: Start user session
         run: |
-          DBUS_OUTPUT=$(dbus-daemon --session --fork --print-address=1 --print-pid=1)
-          DBUS_SESSION_BUS_ADDRESS=$(printf '%s\n' "$DBUS_OUTPUT" | sed -n '1p')
-          DBUS_SESSION_BUS_PID=$(printf '%s\n' "$DBUS_OUTPUT" | sed -n '2p')
+          XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+          sudo loginctl enable-linger "$(id -un)" || true
+          sudo systemctl start "user@$(id -u).service"
+          export XDG_RUNTIME_DIR
+          export DBUS_SESSION_BUS_ADDRESS
+          systemctl --user start dbus.socket || true
+          timeout 30 bash -c "until [ -S '${XDG_RUNTIME_DIR}/bus' ]; do sleep 1; done"
+          echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}" >> "$GITHUB_ENV"
           echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" >> "$GITHUB_ENV"
-          echo "DBUS_SESSION_BUS_PID=${DBUS_SESSION_BUS_PID}" >> "$GITHUB_ENV"
 
       - name: Start snap under test
         env:
@@ -121,7 +126,9 @@ jobs:
           echo "=== Running snap processes ==="
           pgrep -a -f "/snap/${SNAP_NAME}/" 2>&1 || true
           echo "=== Session D-Bus ==="
+          printf 'XDG_RUNTIME_DIR=%s\n' "${XDG_RUNTIME_DIR:-<unset>}"
           printf 'DBUS_SESSION_BUS_ADDRESS=%s\n' "${DBUS_SESSION_BUS_ADDRESS:-<unset>}"
+          systemctl --user status dbus.socket --no-pager 2>&1 || true
           echo "=== Snap stdout ==="
           cat /tmp/snap-stdout.log 2>/dev/null || true
           echo "=== Snap stderr ==="
