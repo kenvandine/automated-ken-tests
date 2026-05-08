@@ -8,9 +8,9 @@
 # Your testing repository should contain YARF test suites at:
 #   suites/<snap_name>/suite/   (with __init__.robot and individual test files)
 #
-# Required repository secrets:
-#   SNAP_DASHBOARD_GITHUB_TOKEN  - A GitHub token with `repo` scope so the
-#                                  workflow can create branches, commits, and PRs.
+# Test results (screenshots, metadata) are stored as GitHub Actions artifacts
+# and fetched directly by snap-dashboard after the run completes.
+# No branch or PR creation is needed.
 #
 # Optional secrets:
 #   SNAPCRAFT_STORE_CREDENTIALS  - If you need store-authenticated snap installs.
@@ -43,7 +43,7 @@ on:
         required: false
         type: string
       dashboard_run_id:
-        description: "snap-dashboard TestRun ID (echoed into PR metadata)"
+        description: "snap-dashboard TestRun ID (for correlation)"
         required: false
         type: string
 
@@ -51,9 +51,6 @@ jobs:
   yarf-test:
     name: "YARF — ${{ inputs.snap_name }} ${{ inputs.architecture }} from ${{ inputs.from_channel }}"
     runs-on: "${{ inputs.architecture == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}"
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout testing repo
@@ -67,6 +64,13 @@ jobs:
           sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
           sudo snap connect yarf:process-control
           sudo snap connect "${{ inputs.snap_name }}":wayland || true
+
+          # Capture actual installed version and revision
+          SNAP_LIST=$(snap list "${{ inputs.snap_name }}" --unicode=never | tail -1)
+          ACTUAL_VERSION=$(echo "$SNAP_LIST" | awk '{print $2}')
+          ACTUAL_REVISION=$(echo "$SNAP_LIST" | awk '{print $3}')
+          echo "ACTUAL_VERSION=${ACTUAL_VERSION}" >> "$GITHUB_ENV"
+          echo "ACTUAL_REVISION=${ACTUAL_REVISION}" >> "$GITHUB_ENV"
 
       - name: Start Mir compositor
         run: |
@@ -145,13 +149,6 @@ jobs:
           print(f"Total: {len(screenshots)} screenshot(s)")
           EOF
 
-      - name: Upload test artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "yarf-results-${{ inputs.snap_name }}-${{ github.run_id }}"
-          path: "results/${{ inputs.snap_name }}"
-          if-no-files-found: warn
-
       - name: Determine test status
         id: status
         run: |
@@ -162,88 +159,45 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit results to branch
-        env:
-          GITHUB_TOKEN: ${{ secrets.SNAP_DASHBOARD_GITHUB_TOKEN || github.token }}
+      - name: Write summary metadata
         run: |
-          BRANCH="test-results/${{ inputs.snap_name }}/${{ github.run_id }}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          mkdir -p "results/${{ inputs.snap_name }}"
           cat > "results/${{ inputs.snap_name }}/summary.txt" <<EOF
           snap: ${{ inputs.snap_name }}
           version: ${{ inputs.version }}
+          actual_version: ${ACTUAL_VERSION}
           channel: ${{ inputs.from_channel }}
           revision: ${{ inputs.revision }}
+          actual_revision: ${ACTUAL_REVISION}
+          architecture: ${{ inputs.architecture }}
           status: ${{ steps.status.outputs.status }}
-          gh_run: ${{ github.run_id }}
+          gh_run_id: ${{ github.run_id }}
+          dashboard_run_id: ${{ inputs.dashboard_run_id }}
+          yarf_exit_code: ${{ steps.yarf.outputs.yarf_exit }}
           EOF
-          git add "results/${{ inputs.snap_name }}"
-          git commit -m \
-            "test results: ${{ inputs.snap_name }} ${{ inputs.version }} (${{ steps.status.outputs.status }})"
-          git push origin "$BRANCH"
-          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
-      - name: Create (or update) test PR
-        env:
-          GH_TOKEN: ${{ secrets.SNAP_DASHBOARD_GITHUB_TOKEN || github.token }}
-          GH_REPO: ${{ github.repository }}
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "yarf-results-${{ inputs.snap_name }}-${{ github.run_id }}"
+          path: "results/${{ inputs.snap_name }}"
+          if-no-files-found: warn
+
+      - name: Summary
         run: |
           STATUS="${{ steps.status.outputs.status }}"
           SNAP="${{ inputs.snap_name }}"
-          VERSION="${{ inputs.version }}"
-          CHANNEL="${{ inputs.from_channel }}"
-          REVISION="${{ inputs.revision }}"
-          RUN_ID="${{ inputs.dashboard_run_id }}"
-          GH_RUN="${{ github.run_id }}"
-          EXIT="${{ steps.yarf.outputs.yarf_exit }}"
-          ARCH="${{ inputs.architecture }}"
-
           if [ "$STATUS" = "passed" ]; then
-            TITLE_EMOJI="✅"
+            echo "## ✅ Tests passed for ${SNAP}" >> "$GITHUB_STEP_SUMMARY"
           else
-            TITLE_EMOJI="❌"
+            echo "## ❌ Tests failed for ${SNAP}" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-          # Build screenshot section from PNGs committed to the branch
-          SCREENSHOTS=""
-          while IFS= read -r -d '' png; do
-            rel="${png#./}"
-            url="https://raw.githubusercontent.com/${GH_REPO}/${BRANCH}/${rel}"
-            SCREENSHOTS="${SCREENSHOTS}"$'\n'"![$(basename "$png")](${url})"$'\n'
-          done < <(find "results/${SNAP}" -name "*.png" -print0 2>/dev/null | sort -z)
-
-          BODY="## YARF Test Results: ${SNAP}"$'\n\n'
-          BODY+="| Field        | Value            |"$'\n'
-          BODY+="|--------------|------------------|"$'\n'
-          BODY+="| Snap         | \`${SNAP}\`      |"$'\n'
-          BODY+="| Version      | \`${VERSION}\`   |"$'\n'
-          BODY+="| Channel      | \`${CHANNEL}\`   |"$'\n'
-          BODY+="| Architecture | \`${ARCH}\`      |"$'\n'
-          BODY+="| Revision     | \`${REVISION}\`  |"$'\n'
-          BODY+="| Status       | **${STATUS}**    |"$'\n'
-          BODY+="| GHA Run      | [#${GH_RUN}](https://github.com/${GH_REPO}/actions/runs/${GH_RUN}) |"$'\n'
-          if [ -n "${SCREENSHOTS}" ]; then
-            BODY+=$'\n## Screenshots\n\n'
-            BODY+="${SCREENSHOTS}"$'\n'
-          fi
-          BODY+=$'\n<!-- snap-test-metadata\n'
-          BODY+="snap: ${SNAP}"$'\n'
-          BODY+="version: ${VERSION}"$'\n'
-          BODY+="from_channel: ${CHANNEL}"$'\n'
-          BODY+="architecture: ${ARCH}"$'\n'
-          BODY+="revision: ${REVISION}"$'\n'
-          BODY+="dashboard_run_id: ${RUN_ID}"$'\n'
-          BODY+="yarf_exit_code: ${EXIT}"$'\n'
-          BODY+="gh_run_id: ${GH_RUN}"$'\n'
-          BODY+="status: ${STATUS}"$'\n'
-          BODY+="-->"
-
-          gh label create "snap-test-results" --color "0075ca" --description "YARF snap test results" --force
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "${TITLE_EMOJI} ${SNAP} ${VERSION} (${CHANNEL}) — ${STATUS}" \
-            --body "$BODY" \
-            --label "snap-test-results"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Snap | \`${SNAP}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Installed version | \`${ACTUAL_VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Installed revision | \`${ACTUAL_REVISION}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Channel | \`${{ inputs.from_channel }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Architecture | \`${{ inputs.architecture }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| YARF exit code | \`${{ steps.yarf.outputs.yarf_exit }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dashboard run ID | \`${{ inputs.dashboard_run_id }}\` |" >> "$GITHUB_STEP_SUMMARY"
