@@ -1,0 +1,6 @@
+snap: proton-lumo-ai
+version: 0.2.0-1-gfc2a377c38
+channel: edge
+revision: 3
+status: passed
+gh_run: 25555120864
