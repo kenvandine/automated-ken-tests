@@ -81,13 +81,21 @@ jobs:
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          echo "=== meta/snap.yaml ==="
-          cat "/snap/$SNAP_NAME/current/meta/snap.yaml" || true
-          echo "=== command-chain scripts ==="
-          for f in "/snap/$SNAP_NAME/current/snap/command-chain/"*.sh; do
+          SNAP_DIR="/snap/$SNAP_NAME/current"
+          echo "=== command-chain dir ==="
+          ls -la "$SNAP_DIR/snap/command-chain/" 2>/dev/null || true
+          for f in "$SNAP_DIR/snap/command-chain/"*; do
             [ -f "$f" ] || continue
-            echo "--- $f ---"
-            cat "$f"
+            echo "--- $f ($(file -b "$f")) ---"
+            head -80 "$f" 2>/dev/null || true
+            echo ""
+          done
+          echo "=== launcher (top-level) ==="
+          for path in "$SNAP_DIR/launcher" "$SNAP_DIR/bin/launcher" "$SNAP_DIR/usr/bin/launcher"; do
+            [ -f "$path" ] || continue
+            echo "--- $path ($(file -b "$path")) ---"
+            head -80 "$path" 2>/dev/null || true
+            echo ""
           done
 
       - name: Start Mir compositor
