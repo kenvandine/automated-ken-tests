@@ -89,11 +89,13 @@ jobs:
           echo "GALLIUM_DRIVER=llvmpipe" >> "$GITHUB_ENV"
 
       - name: Start snap under test
+        env:
+          SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          snap run "${{ inputs.snap_name }}" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
+          dbus-run-session -- bash -lc 'exec snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log' &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
-            "until pgrep -f '${{ inputs.snap_name }}' > /dev/null; do sleep 1; done"
+            "until pgrep -f '$SNAP_NAME' > /dev/null; do sleep 1; done"
           sleep 15
 
       - name: Debug display state
