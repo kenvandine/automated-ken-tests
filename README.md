@@ -82,4 +82,12 @@ The PR body contains a results table, screenshots (if any PNGs were written to `
 | Snap | Suite location |
 |------|---------------|
 | `ask-ubuntu` | `suites/ask-ubuntu/suite/` |
+| `copilot-desktop` | `suites/copilot-desktop/suite/` |
+| `deepseek-desktop` | `suites/deepseek-desktop/suite/` |
+| `duck-ai` | `suites/duck-ai/suite/` |
+| `gemini-desktop` | `suites/gemini-desktop/suite/` |
 | `lemonade` | `suites/lemonade/suite/` |
+| `lemonade-desktop` | `suites/lemonade-desktop/suite/` |
+| `perplexity-desktop` | `suites/perplexity-desktop/suite/` |
+| `proton-lumo-ai` | `suites/proton-lumo-ai/suite/` |
+| `terminal-fun` | `suites/terminal-fun/suite/` |
