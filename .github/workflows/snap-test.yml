@@ -112,7 +112,8 @@ jobs:
             XDG_SESSION_TYPE=wayland \
             OZONE_PLATFORM=wayland \
             ELECTRON_OZONE_PLATFORM_HINT=wayland \
-            snap run "$SNAP_NAME" -- --use-gl=swiftshader > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
+            XCURSOR_SIZE=24 \
+            snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
             "until pgrep -f '/snap/${SNAP_NAME}/' > /dev/null; do sleep 1; done"
