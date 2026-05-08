@@ -57,17 +57,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install snaps
+        env:
+          SNAP_NAME: ${{ inputs.snap_name }}
         run: |
           sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
-          sudo snap install "${{ inputs.snap_name }}" --channel "${{ inputs.from_channel }}"
+          sudo snap install "$SNAP_NAME" --channel "${{ inputs.from_channel }}"
           sudo snap connect yarf:process-control
-          sudo snap connect "${{ inputs.snap_name }}":wayland || true
-          sudo snap connect "${{ inputs.snap_name }}":opengl || true
+          sudo snap connect "$SNAP_NAME":wayland || true
+          sudo snap connect "$SNAP_NAME":opengl || true
 
           # Capture actual installed version and revision
-          SNAP_LIST=$(snap list "${{ inputs.snap_name }}" --unicode=never | tail -1)
+          SNAP_LIST=$(snap list "$SNAP_NAME" --unicode=never | tail -1)
           ACTUAL_VERSION=$(echo "$SNAP_LIST" | awk '{print $2}')
           ACTUAL_REVISION=$(echo "$SNAP_LIST" | awk '{print $3}')
           echo "ACTUAL_VERSION=${ACTUAL_VERSION}" >> "$GITHUB_ENV"
@@ -92,22 +94,39 @@ jobs:
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          dbus-run-session -- bash -lc 'exec snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log' &
+          snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
-            "until pgrep -f '$SNAP_NAME' > /dev/null; do sleep 1; done"
+            "until pgrep -f '/snap/${SNAP_NAME}/' > /dev/null; do sleep 1; done"
           sleep 15
 
       - name: Debug display state
+        env:
+          SNAP_NAME: ${{ inputs.snap_name }}
         run: |
           echo "=== Wayland compositor socket ==="
           ls -la "$XDG_RUNTIME_DIR"/wayland-* 2>&1 || true
           echo "=== Running snap processes ==="
-          pgrep -a -f "${{ inputs.snap_name }}" 2>&1 || true
+          pgrep -a -f "/snap/${SNAP_NAME}/" 2>&1 || true
           echo "=== Snap stdout ==="
           cat /tmp/snap-stdout.log 2>/dev/null || true
           echo "=== Snap stderr ==="
           cat /tmp/snap-stderr.log 2>/dev/null || true
+
+      - name: Verify snap stayed alive
+        id: app_health
+        continue-on-error: true
+        env:
+          SNAP_NAME: ${{ inputs.snap_name }}
+        run: |
+          if pgrep -a -f "/snap/${SNAP_NAME}/" > /tmp/snap-processes.log; then
+            cat /tmp/snap-processes.log
+            echo "alive=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No running /snap/${SNAP_NAME}/ process found after render wait." >&2
+            echo "alive=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
 
       - name: Run YARF tests
         id: yarf
@@ -123,15 +142,24 @@ jobs:
           set -e
           echo "yarf_exit=${YARF_EXIT}" >> "$GITHUB_OUTPUT"
 
-      - name: Extract screenshots from YARF log
+      - name: Extract and validate screenshots
+        id: screenshots
+        continue-on-error: true
         run: |
           python3 - <<'EOF'
           import re, base64, zlib, os, sys, io
-          from PIL import Image
+          from PIL import Image, ImageStat
+
+          def set_output(name, value):
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+                  fh.write(f"{name}={value}\n")
+
           snap = "${{ inputs.snap_name }}"
           html_file = f"results/{snap}/log.html"
           if not os.path.exists(html_file):
               print("No log.html found, skipping")
+              set_output("count", "0")
+              set_output("valid", "false")
               sys.exit(0)
           content = open(html_file, "rb").read().decode("utf-8", errors="replace")
           # YARF stores log messages as zlib-compressed base64 blobs in its JS output.
@@ -139,6 +167,7 @@ jobs:
           # Blobs starting with "eN" are zlib-compressed (magic bytes 0x78 0xDA in base64).
           blobs = re.findall(r'"(eN[A-Za-z0-9+/=]+)"', content)
           screenshots = []
+          failures = []
           for blob in blobs:
               try:
                   decompressed = zlib.decompress(base64.b64decode(blob)).decode("utf-8", errors="replace")
@@ -146,23 +175,39 @@ jobs:
                   screenshots.extend(pngs)
               except Exception:
                   pass
+          if not screenshots:
+              print("No screenshots found in YARF log")
+              set_output("count", "0")
+              set_output("valid", "false")
+              sys.exit(1)
           for i, png_b64 in enumerate(screenshots):
               path = f"results/{snap}/screenshot-{i+1:03d}.png"
               img = Image.open(io.BytesIO(base64.b64decode(png_b64)))
+              brightness = sum(ImageStat.Stat(img.convert("RGB")).mean) / 3
+              if brightness < 8:
+                  failures.append(f"{path} is effectively black (mean brightness {brightness:.2f})")
               # Crop out the black Mir desktop background, keeping only the app window
               bbox = img.convert("RGB").getbbox()
               if bbox:
                   img = img.crop(bbox)
               img.save(path)
               print(f"Extracted {path}")
+          set_output("count", str(len(screenshots)))
+          set_output("valid", "false" if failures else "true")
+          for failure in failures:
+              print(failure)
           print(f"Total: {len(screenshots)} screenshot(s)")
+          if failures:
+              sys.exit(1)
           EOF
 
       - name: Determine test status
         id: status
         run: |
           EXIT="${{ steps.yarf.outputs.yarf_exit }}"
-          if [ "$EXIT" = "0" ]; then
+          APP_ALIVE="${{ steps.app_health.outputs.alive }}"
+          SCREENSHOT_VALID="${{ steps.screenshots.outputs.valid }}"
+          if [ "$EXIT" = "0" ] && [ "$APP_ALIVE" = "true" ] && [ "$SCREENSHOT_VALID" = "true" ]; then
             echo "status=passed" >> "$GITHUB_OUTPUT"
           else
             echo "status=failed" >> "$GITHUB_OUTPUT"
@@ -182,6 +227,9 @@ jobs:
           gh_run_id: ${{ github.run_id }}
           dashboard_run_id: ${{ inputs.dashboard_run_id }}
           yarf_exit_code: ${{ steps.yarf.outputs.yarf_exit }}
+          app_alive_after_wait: ${{ steps.app_health.outputs.alive }}
+          screenshot_count: ${{ steps.screenshots.outputs.count }}
+          screenshot_valid: ${{ steps.screenshots.outputs.valid }}
           EOF
 
       - name: Collect snap logs
@@ -215,3 +263,7 @@ jobs:
           echo "| Architecture | \`${{ inputs.architecture }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| YARF exit code | \`${{ steps.yarf.outputs.yarf_exit }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Dashboard run ID | \`${{ inputs.dashboard_run_id }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail workflow on test failure
+        if: steps.status.outputs.status != 'passed'
+        run: exit 1
