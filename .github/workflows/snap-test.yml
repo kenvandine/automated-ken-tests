@@ -97,6 +97,15 @@ jobs:
             head -80 "$path" 2>/dev/null || true
             echo ""
           done
+          echo "=== content snap chain scripts ==="
+          for path in \
+            "$SNAP_DIR/gnome-platform/command-chain/desktop-launch" \
+            "$SNAP_DIR/gpu-2404/bin/gpu-2404-provider-wrapper"; do
+            [ -f "$path" ] || continue
+            echo "--- $path ($(file -b "$path")) ---"
+            cat "$path" 2>/dev/null | tail -40 || true
+            echo ""
+          done
 
       - name: Start Mir compositor
         run: |
