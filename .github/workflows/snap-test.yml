@@ -67,6 +67,8 @@ jobs:
           sudo snap connect yarf:process-control
           sudo snap connect "$SNAP_NAME":wayland || true
           sudo snap connect "$SNAP_NAME":opengl || true
+          echo "=== Snap connections for $SNAP_NAME ==="
+          snap connections "$SNAP_NAME" || true
 
           # Capture actual installed version and revision
           SNAP_LIST=$(snap list "$SNAP_NAME" --unicode=never | tail -1)
@@ -80,7 +82,6 @@ jobs:
           export WAYLAND_DISPLAY=wayland-99
           mir-test-tools.demo-server \
             --add-wayland-extensions zwlr_screencopy_manager_v1:zwlr_virtual_pointer_manager_v1 \
-            --drop-wayland-extensions zwp_linux_dmabuf_v1 \
             --platform-display-libs mir:virtual \
             --virtual-output 1920x1080 &
           inotifywait --event create \
@@ -107,15 +108,11 @@ jobs:
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          EXTRA_ARGS=""
-          if [ "$SNAP_NAME" = "proton-lumo-ai" ]; then
-            EXTRA_ARGS="--disable-gpu"
-          fi
           env \
             XDG_SESSION_TYPE=wayland \
             OZONE_PLATFORM=wayland \
             ELECTRON_OZONE_PLATFORM_HINT=wayland \
-            snap run "$SNAP_NAME" ${EXTRA_ARGS} > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
+            snap run "$SNAP_NAME" > /tmp/snap-stdout.log 2> /tmp/snap-stderr.log &
           # Wait for the snap process to appear, then give it time to render
           timeout 30 bash -c \
             "until pgrep -f '/snap/${SNAP_NAME}/' > /dev/null; do sleep 1; done"
