@@ -90,6 +90,14 @@ jobs:
           echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
           echo "GALLIUM_DRIVER=llvmpipe" >> "$GITHUB_ENV"
 
+      - name: Start session D-Bus
+        run: |
+          DBUS_OUTPUT=$(dbus-daemon --session --fork --print-address=1 --print-pid=1)
+          DBUS_SESSION_BUS_ADDRESS=$(printf '%s\n' "$DBUS_OUTPUT" | sed -n '1p')
+          DBUS_SESSION_BUS_PID=$(printf '%s\n' "$DBUS_OUTPUT" | sed -n '2p')
+          echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_PID=${DBUS_SESSION_BUS_PID}" >> "$GITHUB_ENV"
+
       - name: Start snap under test
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
@@ -112,6 +120,8 @@ jobs:
           ls -la "$XDG_RUNTIME_DIR"/wayland-* 2>&1 || true
           echo "=== Running snap processes ==="
           pgrep -a -f "/snap/${SNAP_NAME}/" 2>&1 || true
+          echo "=== Session D-Bus ==="
+          printf 'DBUS_SESSION_BUS_ADDRESS=%s\n' "${DBUS_SESSION_BUS_ADDRESS:-<unset>}"
           echo "=== Snap stdout ==="
           cat /tmp/snap-stdout.log 2>/dev/null || true
           echo "=== Snap stderr ==="
