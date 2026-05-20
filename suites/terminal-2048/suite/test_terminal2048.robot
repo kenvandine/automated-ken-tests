@@ -8,7 +8,7 @@ Library          Process
 Terminal 2048 Launches And Renders
     [Documentation]    Verify terminal-2048 snap launches in a foot terminal on Mir
     [Tags]    smoke    yarf:certification_status: blocker
-    Start Process    foot    snap    run    terminal-2048    alias=terminal-2048
+    Start Process    /usr/bin/foot    snap    run    terminal-2048    alias=terminal-2048
     Sleep    3s
     Log Screenshot
     [Teardown]    Terminate Process    terminal-2048

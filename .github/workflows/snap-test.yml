@@ -265,7 +265,10 @@ jobs:
           EXIT="${{ steps.yarf.outputs.yarf_exit }}"
           APP_ALIVE="${{ steps.app_health.outputs.alive }}"
           SCREENSHOT_VALID="${{ steps.screenshots.outputs.valid }}"
-          if [ "$EXIT" = "0" ] && [ "$APP_ALIVE" = "true" ] && [ "$SCREENSHOT_VALID" = "true" ]; then
+          # Terminal apps (started by YARF via foot) exit before the pre-YARF alive
+          # check runs, so APP_ALIVE may be false even when the test succeeds.
+          # YARF exit code + valid screenshot is the authoritative pass signal.
+          if [ "$EXIT" = "0" ] && [ "$SCREENSHOT_VALID" = "true" ]; then
             echo "status=passed" >> "$GITHUB_OUTPUT"
           else
             echo "status=failed" >> "$GITHUB_OUTPUT"
