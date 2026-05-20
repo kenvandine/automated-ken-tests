@@ -60,7 +60,7 @@ jobs:
         env:
           SNAP_NAME: ${{ inputs.snap_name }}
         run: |
-          sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri dbus-user-session
+          sudo apt-get install -y inotify-tools python3-pil libgl1-mesa-dri dbus-user-session foot
           sudo snap install --beta yarf
           sudo snap install mir-test-tools
           sudo snap install "$SNAP_NAME" --channel "${{ inputs.from_channel }}"
